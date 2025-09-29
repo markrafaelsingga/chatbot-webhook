@@ -1,0 +1,16 @@
+name: FAQ Webhook
+on:
+  repository_dispatch:
+    types: [faq-request]
+
+jobs:
+  process-faq:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Process Question
+        run: |
+          RESPONSE=$(curl -s -X POST \
+            "https://script.google.com/macros/s/AKfycbwAx1SvZTW6JZZYUohpSVVqWfINjxE0E_eXuYz28-K4zTZI0uzcv7sXWfChVYFZ71DDdA/exec" \
+            -H "Content-Type: application/json" \
+            -d '{"question": "${{ github.event.client_payload.question }}"}')
+          echo "response=$RESPONSE" >> $GITHUB_OUTPUT
