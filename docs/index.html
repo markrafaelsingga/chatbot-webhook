@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>FAQ Webhook Proxy</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .container { background: #f5f5f5; padding: 20px; border-radius: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 FAQ Webhook Service</h1>
+        <p>This service proxies requests from Botcake to Google Apps Script.</p>
+        <p><strong>Status:</strong> <span style="color: green;">✅ Online</span></p>
+        
+        <h2>Test the Service:</h2>
+        <input type="text" id="questionInput" placeholder="Enter a question..." style="width: 300px; padding: 8px;">
+        <button onclick="testService()">Test</button>
+        <div id="result" style="margin-top: 20px; padding: 10px; background: white; border-radius: 5px;"></div>
+    </div>
+
+    <script>
+        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwAx1SvZTW6JZZYUohpSVVqWfINjxE0E_eXuYz28-K4zTZI0uzcv7sXWfChVYFZ71DDdA/exec';
+        
+        async function testService() {
+            const question = document.getElementById('questionInput').value;
+            const resultDiv = document.getElementById('result');
+            
+            if (!question) {
+                resultDiv.innerHTML = '<span style="color: red;">Please enter a question</span>';
+                return;
+            }
+            
+            resultDiv.innerHTML = '⏳ Processing...';
+            
+            try {
+                const response = await fetch(APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question })
+                });
+                
+                const data = await response.json();
+                resultDiv.innerHTML = `<strong>Response:</strong> ${data.answer}`;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<span style="color: red;">Error: ${error.message}</span>`;
+            }
+        }
+        
+        console.log('FAQ Webhook Proxy is running...');
+    </script>
+</body>
+</html>
