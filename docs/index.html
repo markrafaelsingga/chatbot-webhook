@@ -5,52 +5,134 @@
     <style>
         body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
         .container { background: #f5f5f5; padding: 20px; border-radius: 10px; }
+        input, button { padding: 10px; margin: 5px; }
+        .success { color: green; }
+        .error { color: red; }
+        .loading { color: blue; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🤖 FAQ Webhook Service</h1>
         <p>This service proxies requests from Botcake to Google Apps Script.</p>
-        <p><strong>Status:</strong> <span style="color: green;">✅ Online</span></p>
+        <p><strong>Status:</strong> <span id="status">Checking...</span></p>
         
         <h2>Test the Service:</h2>
-        <input type="text" id="questionInput" placeholder="Enter a question..." style="width: 300px; padding: 8px;">
+        <input type="text" id="questionInput" placeholder="How do I track my order?" style="width: 300px;">
         <button onclick="testService()">Test</button>
-        <div id="result" style="margin-top: 20px; padding: 10px; background: white; border-radius: 5px;"></div>
+        
+        <h3>Or test with sample questions:</h3>
+        <button onclick="testSample('How do I track my order?')">Track Order</button>
+        <button onclick="testSample('What are your business hours?')">Business Hours</button>
+        <button onclick="testSample('How can I contact support?')">Contact Support</button>
+        
+        <div id="result" style="margin-top: 20px; padding: 15px; background: white; border-radius: 5px; min-height: 50px;"></div>
+        
+        <div id="debug" style="margin-top: 20px; font-size: 12px; color: #666;"></div>
     </div>
 
     <script>
-        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwAx1SvZTW6JZZYUohpSVVqWfINjxE0E_eXuYz28-K4zTZI0uzcv7sXWfChVYFZ71DDdA/exec';
+        // REPLACE THIS WITH YOUR ACTUAL GOOGLE APPS SCRIPT URL
+        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwJXJF-MXYnGEwE7U5_Tk-2YaIB6w8jh27OHL_nKilbflmI5hyfac8eQv8dJylISZ--HA/exec';
+        
+        // Test connection on page load
+        window.addEventListener('load', function() {
+            testConnection();
+        });
+        
+        async function testConnection() {
+            const statusElement = document.getElementById('status');
+            const debugElement = document.getElementById('debug');
+            
+            try {
+                statusElement.innerHTML = '<span class="loading">⏳ Testing connection...</span>';
+                debugElement.innerHTML = `Testing URL: ${APPS_SCRIPT_URL}`;
+                
+                const response = await fetch(APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ question: 'test connection' })
+                });
+                
+                debugElement.innerHTML += `<br>Response status: ${response.status}`;
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    statusElement.innerHTML = '<span class="success">✅ Online - Connection successful!</span>';
+                    debugElement.innerHTML += `<br>Response: ${JSON.stringify(data)}`;
+                } else {
+                    statusElement.innerHTML = '<span class="error">❌ Connection failed - Server error</span>';
+                }
+                
+            } catch (error) {
+                statusElement.innerHTML = '<span class="error">❌ Offline - Cannot reach service</span>';
+                debugElement.innerHTML += `<br>Error: ${error.message}`;
+                debugElement.innerHTML += `<br>Make sure your Google Apps Script is deployed with "Anyone" access`;
+            }
+        }
+        
+        function testSample(question) {
+            document.getElementById('questionInput').value = question;
+            testService();
+        }
         
         async function testService() {
             const question = document.getElementById('questionInput').value;
             const resultDiv = document.getElementById('result');
+            const debugElement = document.getElementById('debug');
             
             if (!question) {
-                resultDiv.innerHTML = '<span style="color: red;">Please enter a question</span>';
+                resultDiv.innerHTML = '<span class="error">Please enter a question</span>';
                 return;
             }
             
-            resultDiv.innerHTML = '⏳ Processing...';
+            resultDiv.innerHTML = '<span class="loading">⏳ Processing...</span>';
+            debugElement.innerHTML = `Sending: "${question}" to ${APPS_SCRIPT_URL}`;
             
             try {
                 const response = await fetch(APPS_SCRIPT_URL, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ question })
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ question: question })
                 });
                 
+                debugElement.innerHTML += `<br>Response status: ${response.status}`;
+                debugElement.innerHTML += `<br>Response headers: ${JSON.stringify(Object.fromEntries(response.headers))}`;
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
                 const data = await response.json();
-                resultDiv.innerHTML = `<strong>Response:</strong> ${data.answer}`;
+                debugElement.innerHTML += `<br>Full response: ${JSON.stringify(data)}`;
+                
+                if (data.success) {
+                    resultDiv.innerHTML = `<strong>✅ Answer:</strong> ${data.answer}`;
+                } else {
+                    resultDiv.innerHTML = `<span class="error">❌ Error: ${data.answer || data.error}</span>`;
+                }
                 
             } catch (error) {
-                resultDiv.innerHTML = `<span style="color: red;">Error: ${error.message}</span>`;
+                resultDiv.innerHTML = `<span class="error">❌ Failed: ${error.message}</span>`;
+                debugElement.innerHTML += `<br>Detailed error: ${error.toString()}`;
+                
+                // Additional troubleshooting info
+                debugElement.innerHTML += `<br><br>💡 <strong>Troubleshooting:</strong>`;
+                debugElement.innerHTML += `<br>• Check if Google Apps Script URL is correct`;
+                debugElement.innerHTML += `<br>• Verify deployment has "Anyone" access`;
+                debugElement.innerHTML += `<br>• Check browser console for CORS errors`;
             }
         }
         
-        console.log('FAQ Webhook Proxy is running...');
+        // Log to console for debugging
+        console.log('FAQ Webhook Proxy initialized');
+        console.log('Target URL:', APPS_SCRIPT_URL);
     </script>
-    <script src="proxy.js"></script>
 </body>
 </html>
-
